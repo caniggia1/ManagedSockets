@@ -25,7 +25,7 @@ namespace Sockets {
         public IPEndPoint Endpoint { get; set; }
 
         private const int ReadSize = 1024; // -- 1024 keeps memory usage low but may be slow if largers amounts of data are filtering in..
-        private const int ConnectTimeout = 15000; // -- 15 seconds
+        public int ConnectTimeout = 3000; // -- 3 seconds
 
         private TcpClient _baseSocket; // -- The socket used in network communications
         private NetworkStream _baseStream; // -- Network stream from the above socket
@@ -154,11 +154,17 @@ namespace Sockets {
 
             IAsyncResult handle = _baseSocket.BeginConnect(Endpoint.Address, Endpoint.Port, ConnectComplete, null);
 
-            if (handle.AsyncWaitHandle.WaitOne(ConnectTimeout)) // -- Handle connection timeouts
-                return;
+            if (handle.AsyncWaitHandle.WaitOne(ConnectTimeout)) { // -- Handle connection timeouts
+                if (_baseSocket.Connected)
+                    return;
+                else {
+                    _baseSocket.Close();
+                    throw new TimeoutException("Non-existing Port.");      // no need of return; after this
+                }
+            }
 
             _baseSocket.Close();
-            throw new TimeoutException("Failed to connect to the server.");
+            throw new TimeoutException("Non-existing IP.");
         }
 
         /// <summary>
